@@ -24,7 +24,12 @@
 import sys
 from pathlib import Path
 
-ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
+ROOT = next((p for p in (Path.cwd(), *Path.cwd().parents, Path("/content/lab22")) if (p / "lab22" / "config.py").exists()), None)
+if ROOT is None:
+    raise RuntimeError("Chưa chạy phần A. Setup! Vui lòng cuộn lên đầu trang và chạy các cell Setup trước.")
+if Path.cwd() != ROOT:
+    import os
+    os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
 
 from transformers import AutoTokenizer

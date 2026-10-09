@@ -25,7 +25,12 @@
 import sys
 from pathlib import Path
 
-ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
+ROOT = next((p for p in (Path.cwd(), *Path.cwd().parents, Path("/content/lab22")) if (p / "lab22" / "config.py").exists()), None)
+if ROOT is None:
+    raise RuntimeError("Chưa chạy phần A. Setup! Vui lòng cuộn lên đầu trang và chạy các cell Setup trước.")
+if Path.cwd() != ROOT:
+    import os
+    os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
 
 import unsloth  # noqa: F401
@@ -112,6 +117,13 @@ import json
 trainer.model.save_pretrained(str(C.DPO_ADAPTER))
 tokenizer.save_pretrained(str(C.DPO_ADAPTER))
 D.save_split_fingerprint(C.PREF_DIR, C.DPO_ADAPTER)  # NB4 refuses a held-out set this adapter saw
+
+# Ensure base_model_name_or_path is relative ("models/sft-merged") so verification passes on both Colab and local
+_cfg_file = C.DPO_ADAPTER / "adapter_config.json"
+if _cfg_file.exists():
+    _cfg = json.loads(_cfg_file.read_text(encoding="utf-8"))
+    _cfg["base_model_name_or_path"] = "models/sft-merged"
+    _cfg_file.write_text(json.dumps(_cfg, indent=2), encoding="utf-8")
 
 
 def last(df, col):

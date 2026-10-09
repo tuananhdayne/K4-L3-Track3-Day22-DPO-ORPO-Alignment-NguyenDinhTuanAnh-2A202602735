@@ -32,7 +32,12 @@
 import sys
 from pathlib import Path
 
-ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
+ROOT = next((p for p in (Path.cwd(), *Path.cwd().parents, Path("/content/lab22")) if (p / "lab22" / "config.py").exists()), None)
+if ROOT is None:
+    raise RuntimeError("Chưa chạy phần A. Setup! Vui lòng cuộn lên đầu trang và chạy các cell Setup trước.")
+if Path.cwd() != ROOT:
+    import os
+    os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
 
 import unsloth  # noqa: F401
@@ -180,3 +185,53 @@ print(result)
 # 2. Với N_TEST=100, chênh lệch độ chính xác bao nhiêu mới vượt nhiễu? (sai số chuẩn ≈ √(p(1−p)/n)).
 # 3. So `acc_before` với GSM8K (tiếng Anh) của SFT ở NB6: ngôn ngữ, độ khó, câu hỏi và cách chấm
 #    đều khác, nên con số nào đáng tin hơn cho câu hỏi "GRPO có giúp toán không"?
+
+# %% [markdown]
+# ## 6. Đóng gói kết quả nộp bài cuối cùng (full bundle)
+#
+# Tự động nén toàn bộ artifact từ NB0 đến NB7 thành file zip để nộp bài.
+
+# %%
+import shutil
+from pathlib import Path
+
+zip_name = "lab22_artifacts"
+bundle_dir = C.REPO_ROOT / "bundle_temp"
+bundle_dir.mkdir(exist_ok=True)
+
+targets = [
+    "submission/screenshots",
+    "data/eval",
+    "data/pref",
+    "adapters/sft-mini",
+    "adapters/dpo",
+    "models/sft-merged",
+    "adapters/variants",
+    "adapters/grpo",
+]
+for sub in targets:
+    src = C.REPO_ROOT / sub
+    dst = bundle_dir / sub
+    if src.exists():
+        shutil.copytree(
+            src,
+            dst,
+            ignore=shutil.ignore_patterns("*.safetensors", "*.bin", "*.pt", "*.pth"),
+            dirs_exist_ok=True,
+        )
+
+archive_path = shutil.make_archive(str(C.REPO_ROOT / zip_name), "zip", root_dir=str(bundle_dir))
+shutil.rmtree(bundle_dir)
+print(f"✓ Đã tạo file nén cuối cùng: {archive_path}")
+
+drive_dir = Path("/content/drive/MyDrive")
+if drive_dir.exists():
+    shutil.copy2(archive_path, drive_dir / "lab22_artifacts.zip")
+    print(f"✓ Đã lưu thêm 1 bản dự phòng vào Google Drive: {drive_dir / 'lab22_artifacts.zip'}")
+
+try:
+    from google.colab import files
+    files.download(archive_path)
+    print("✓ Đang kích hoạt tải file về máy qua trình duyệt...")
+except Exception:
+    print(f"Tải file thủ công từ cây thư mục bên trái: {archive_path}")

@@ -21,7 +21,12 @@
 import sys
 from pathlib import Path
 
-ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
+ROOT = next((p for p in (Path.cwd(), *Path.cwd().parents, Path("/content/lab22")) if (p / "lab22" / "config.py").exists()), None)
+if ROOT is None:
+    raise RuntimeError("Chưa chạy phần A. Setup! Vui lòng cuộn lên đầu trang và chạy các cell Setup trước.")
+if Path.cwd() != ROOT:
+    import os
+    os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
 
 import math
@@ -59,8 +64,10 @@ print(f"sum log p = {total.item():.3f}   mean log p = {mean.item():.3f}")
 # %%
 def my_dpo_loss(pc, pr, rc, rr, beta=0.1):
     """pc/pr: policy log-prob chosen/rejected; rc/rr: reference. Trả về loss trung bình."""
-    # TODO: viết bằng torch.nn.functional.logsigmoid
-    return None
+    chosen_reward = beta * (pc - rc)
+    rejected_reward = beta * (pr - rr)
+    loss = -torch.nn.functional.logsigmoid(chosen_reward - rejected_reward)
+    return loss.mean()
 
 
 # %%

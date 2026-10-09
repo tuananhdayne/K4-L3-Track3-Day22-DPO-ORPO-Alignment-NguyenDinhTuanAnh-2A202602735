@@ -27,7 +27,12 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = next(p for p in (Path.cwd(), *Path.cwd().parents) if (p / "lab22" / "config.py").exists())
+ROOT = next((p for p in (Path.cwd(), *Path.cwd().parents, Path("/content/lab22")) if (p / "lab22" / "config.py").exists()), None)
+if ROOT is None:
+    raise RuntimeError("Chưa chạy phần A. Setup! Vui lòng cuộn lên đầu trang và chạy các cell Setup trước.")
+if Path.cwd() != ROOT:
+    import os
+    os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
 
 import unsloth  # noqa: F401
@@ -242,3 +247,54 @@ print(json.dumps(summary, ensure_ascii=False, indent=2))
 # - +4 độ chặt chẽ: chạy thêm giám khảo qua API khác họ (ví dụ `JUDGE_PROVIDER=gemini`) và báo `cross_judge.agreement`.
 #
 # **Tiếp theo:** NB5 (GGUF) hoặc NB6 (benchmark).
+
+# %% [markdown]
+# ## 6. Đóng gói kết quả nộp bài (submission bundle)
+#
+# Gom toàn bộ artifact (ảnh biểu đồ, json kết quả, parquet) thành file zip để tải về máy nộp bài.
+
+# %%
+import shutil
+
+zip_name = "lab22_artifacts"
+bundle_dir = C.REPO_ROOT / "bundle_temp"
+bundle_dir.mkdir(exist_ok=True)
+
+targets = [
+    "submission/screenshots",
+    "data/eval",
+    "data/pref",
+    "adapters/sft-mini",
+    "adapters/dpo",
+    "models/sft-merged",
+    "adapters/variants",
+    "adapters/grpo",
+]
+for sub in targets:
+    src = C.REPO_ROOT / sub
+    dst = bundle_dir / sub
+    if src.exists():
+        shutil.copytree(
+            src,
+            dst,
+            ignore=shutil.ignore_patterns("*.safetensors", "*.bin", "*.pt", "*.pth"),
+            dirs_exist_ok=True,
+        )
+
+archive_path = shutil.make_archive(str(C.REPO_ROOT / zip_name), "zip", root_dir=str(bundle_dir))
+shutil.rmtree(bundle_dir)
+print(f"✓ Đã tạo file nén: {archive_path}")
+
+# Tự động lưu 1 bản dự phòng vào Google Drive nếu đã kết nối:
+drive_dir = Path("/content/drive/MyDrive")
+if drive_dir.exists():
+    shutil.copy2(archive_path, drive_dir / "lab22_artifacts.zip")
+    print(f"✓ Đã lưu thêm 1 bản dự phòng vào Google Drive: {drive_dir / 'lab22_artifacts.zip'}")
+
+# Tự động kích hoạt tải về máy:
+try:
+    from google.colab import files
+    files.download(archive_path)
+    print("✓ Đang kích hoạt tải file về máy qua trình duyệt...")
+except Exception:
+    print(f"Tải file thủ công từ cây thư mục bên trái: {archive_path}")
